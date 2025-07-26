@@ -13,7 +13,7 @@ if os.path.exists("./chroma_bn"):
           "embedding_function": SentenceTransformerEmbeddingFunction(
           model_name="nomic-ai/nomic-embed-text-v2-moe",
           trust_remote_code=True),
-          "hnsw": {"space": "l2"}
+          "hnsw": {"space": "cosine"}
         }
     )
     print(f"Connected to existing collection with {collection.count()} documents")
@@ -26,7 +26,7 @@ else:
           "embedding_function": SentenceTransformerEmbeddingFunction(
           model_name="nomic-ai/nomic-embed-text-v2-moe",
           trust_remote_code=True),
-          "hnsw": {"space": "l2"}
+          "hnsw": {"space": "cosine"}
         }
     )
     

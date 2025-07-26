@@ -3,18 +3,37 @@ import streamlit as st
 import requests
 from embedder import collection
 
-def generate_rag_response(query):
-    # Query ChromaDB for relevant context
-    results = collection.query(query_texts=[query], n_results=3)
-    top_6_docs = results['documents'][0]
-    context = "\n".join(top_6_docs)
+def generate_rag_response(query, chat_history="", min_similarity_score=0.4):
+    # Query ChromaDB for relevant context with distances
+    results = collection.query(
+        query_texts=[query], 
+        n_results=6,
+        include=["documents", "distances"]
+    )
     
-    # Include chat history for short-term memory
+    documents = results['documents'][0]
+    distances = results['distances'][0]
+    
+    # Filter documents by similarity score (lower distance = higher similarity)
+    # Convert distance to similarity: similarity = 1 - distance
+    filtered_docs = []
+    for doc, distance in zip(documents, distances):
+        similarity = 1 - distance
+        if similarity >= min_similarity_score:
+            filtered_docs.append(doc)
+    
+    # Use filtered context or empty if no relevant docs
+    context = "\n".join(filtered_docs) if filtered_docs else ""
+    
+    if not context:
+        return "দুঃখিত, আপনার প্রশ্নের জন্য পর্যাপ্ত প্রাসঙ্গিক তথ্য পাওয়া যায়নি।"
+    
     prompt = f"""Answer the following question according to the given context precisely.
 
         Context from knowledge base:
         {context}
 
+        {f"Previous conversation:{chat_history}" if chat_history else ""}
 
         প্রশ্ন: {query}
         উত্তর:"""
@@ -26,8 +45,8 @@ def generate_rag_response(query):
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature":0.5,
-                "top_p":0.7,  
+                "temperature":0.7,
+                "top_p":0.95,  
             }
         }
     )
@@ -68,7 +87,7 @@ if prompt := st.chat_input("আপনার প্রশ্ন লিখুন..
                     for msg in recent_messages
                 ])
 
-            response = generate_rag_response(prompt)
+            response = generate_rag_response(prompt, recent_history, min_similarity_score=0.4)
             st.write(response)
     
     # Add assistant response
